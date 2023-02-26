@@ -1,19 +1,35 @@
 package org.mattpayne.learning.upload.upload_info;
 
+import java.io.IOException;
+import java.lang.module.Configuration;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.mattpayne.learning.upload.util.NotFoundException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @Service
 public class UploadInfoService {
 
     private final UploadInfoRepository uploadInfoRepository;
+    private Path rootLocation= Paths.get("uploads");
 
     public UploadInfoService(final UploadInfoRepository uploadInfoRepository) {
         this.uploadInfoRepository = uploadInfoRepository;
+    }
+
+    public void init() {
+        try {
+            Files.createDirectory(rootLocation);
+            System.out.println("Created directory " + rootLocation.toString());
+        } catch (IOException e) {
+            throw new RuntimeException("Could not initialize storage!");
+        }
     }
 
     public List<UploadInfoDTO> findAll() {
@@ -63,4 +79,15 @@ public class UploadInfoService {
         return uploadInfo;
     }
 
+    public UploadInfoDTO uploadFile(MultipartFile file) {
+        try {
+            Files.copy(file.getInputStream(), this.rootLocation.resolve(file.getOriginalFilename()));
+        } catch (IOException ioe) {
+            throw new RuntimeException("Could not store the file. Error: " + ioe.getMessage());
+        }
+        return UploadInfoDTO.builder()
+                .name(file.getOriginalFilename())
+                .type(file.getContentType())
+                .build();
+    }
 }
